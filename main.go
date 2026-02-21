@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,23 +16,28 @@ import (
 )
 
 func main() {
-	appID := mustEnv("GITHUB_APP_ID")
-	keyPath := mustEnv("GITHUB_APP_PRIVATE_KEY_PATH")
-	installationID := mustEnv("GITHUB_APP_INSTALLATION_ID")
+	appID := flag.String("app-id", "", "GitHub App ID (env: GITHUB_APP_ID)")
+	keyPath := flag.String("key-path", "", "path to PEM private key (env: GITHUB_APP_PRIVATE_KEY_PATH)")
+	installationID := flag.String("installation-id", "", "GitHub App installation ID (env: GITHUB_APP_INSTALLATION_ID)")
+	flag.Parse()
 
-	key := loadPrivateKey(keyPath)
+	flagOrEnv(appID, "GITHUB_APP_ID")
+	flagOrEnv(keyPath, "GITHUB_APP_PRIVATE_KEY_PATH")
+	flagOrEnv(installationID, "GITHUB_APP_INSTALLATION_ID")
+
+	key := loadPrivateKey(*keyPath)
 
 	now := time.Now()
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"iat": now.Add(-60 * time.Second).Unix(),
 		"exp": now.Add(10 * time.Minute).Unix(),
-		"iss": appID,
+		"iss": *appID,
 	}).SignedString(key)
 	if err != nil {
 		log.Fatalf("sign jwt: %v", err)
 	}
 
-	url := fmt.Sprintf("https://api.github.com/app/installations/%s/access_tokens", installationID)
+	url := fmt.Sprintf("https://api.github.com/app/installations/%s/access_tokens", *installationID)
 	req, _ := http.NewRequest(http.MethodPost, url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -72,10 +78,11 @@ func loadPrivateKey(path string) *rsa.PrivateKey {
 	return key
 }
 
-func mustEnv(key string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		log.Fatalf("missing required env var: %s", key)
+func flagOrEnv(val *string, envKey string) {
+	if *val == "" {
+		*val = os.Getenv(envKey)
 	}
-	return v
+	if *val == "" {
+		log.Fatalf("missing required value: set %s env var or see -help for flags", envKey)
+	}
 }
