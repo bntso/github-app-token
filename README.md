@@ -12,7 +12,12 @@ go install github.com/bntso/github-app-token@latest
 
 ### Download from releases
 
-Pre-built binaries for Linux and macOS (amd64/arm64) are available on the [releases page](https://github.com/bntso/github-app-token/releases).
+```bash
+curl -fsSL "https://github.com/bntso/github-app-token/releases/latest/download/github-app-token-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')" \
+  -o /usr/local/bin/github-app-token && chmod +x /usr/local/bin/github-app-token
+```
+
+Pre-built binaries for Linux and macOS (amd64/arm64) are also available on the [releases page](https://github.com/bntso/github-app-token/releases).
 
 ## Usage
 
